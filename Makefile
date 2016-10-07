@@ -66,14 +66,14 @@ OBJS   = mexsolve.o
 SRCDIR = $(CURDIR) 
 VPATH = $(SRCDIR)
 
-all: $(TARGET) main
+all: $(TARGET) worker
 
 $(TARGET): $(OBJS)
 	make mexopts
 	$(MEX) $(LDFLAGS) -g $(MEXFLAGS) -output $@ $^ \
 	-lmpi -lschur_gpp 
 
-main: main.cpp
+worker: worker.cpp
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -std=c++11 -O3 -Wall -W \
 	-I$(matlab_eng_inc)  -L$(matlab_eng_path) \
 	-o $@ $< \
@@ -85,7 +85,7 @@ main: main.cpp
         -o $@ -c $^
 
 clean:
-	rm -f $(OBJS) *.lo $(TARGET) main
+	rm -f $(OBJS) *.lo $(TARGET) worker
 
 distclean: clean
 
