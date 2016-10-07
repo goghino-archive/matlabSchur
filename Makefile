@@ -13,8 +13,22 @@
 # installation. This is the directory so that in its 'bin/'
 # subdirectory you see all the matlab executables (such as 'matlab',
 # 'mex', etc.)
-#MATLAB_HOME = /Applications/MATLAB_R2014b.app
-MATLAB_HOME = /opt/MATLAB/R2014b
+HOST=$(shell hostname)
+ifeq ($(HOST),archimedes)
+    mpi_base = /home/kardos/openmpi
+    MATLAB_HOME = /opt/MATLAB/R2014b
+    pardiso_lib = /home/drosos/Libraries/linuxAMD64
+else ifeq ($(findstring icsmaster,$(HOST)),icsmaster)
+    mpi_base = $(OPENMPI_DIR)
+    schur_base = /home/kardos/block_solve
+    pardiso_lib = /home/kardos/lib/pardiso
+    MATLAB_HOME = /apps/matlab/R2016a
+    LIB_SLURM = -lslurm
+    PRELOAD = LD_PRELOAD="/usr/lib64/libslurm.so"
+    #PRELOAD = LD_PRELOAD="/usr/lib64/libslurm.so /apps/gcc/gcc-6.1.0/lib64/libstdc++.so.6"
+    #also modify matlab's .rc script $vim ~/.matlab7rc.sh and
+    #set up LDPATH_PREFIX='/apps/gcc/gcc-6.1.0/lib64/'
+endif
 
 # Set the suffix for matlab mex files. The contents of the
 # $(MATLAB_HOME)/extern/examples/mex directory might be able to help
@@ -25,21 +39,11 @@ MEXSUFFIX   = mexmaci64
 # just "mex". But it also may be something like
 # /user/local/R2006b/bin/mex if "mex" doesn't work.
 MEX = $(MATLAB_HOME)/bin/mex
-#MEX = "$(MATLAB_HOME)/sys/perl/win32/bin/perl" "`$(CYGPATH_W) "$(MATLAB_HOME)/bin/mex.pl"`"
 
 #############################################################################
 # Do not modify anything below unless you know what you're doing.
-mpi_base =  /home/kardos/openmpi-2.0.0
 mpi_library = $(mpi_base)/lib
-
-schur_base = /home/kardos/block_solve
 schur_library = $(schur_base)/lib
-
-matlab_eng_inc = ${MATLAB_HOME}/extern/include
-matlab_eng_path = ${MATLAB_HOME}/bin/glnxa64
-matlab_eng_lib = -leng -lmx
-
-pardiso_lib = /home/drosos/Libraries/linuxAMD64
 
 libdir      = ${mpi_library} #??? 
 
@@ -47,17 +51,6 @@ CXX         = g++
 CXXFLAGS    = -g -fPIC -fopenmp -m64 -DPERF_METRIC -DMATLAB_MEXFILE # -DMWINDEXISINT
 CXXFLAGS   += -I$(mpi_base)/include -I$(schur_base)/include  
 LDFLAGS     = -L$(mpi_library) -L$(schur_library) -L$(pardiso_lib)
-
-#provide necessary libraries to statically link with MPI (libmpi.a and its helpers)
-LIBS_STATIC        =  $(mpi_library)/libmpi.a
-LIBS_STATIC        += $(mpi_library)/libopen-rte.a #MPI helpers
-LIBS_STATIC        += $(mpi_library)/libopen-pal.a #MPI helpers
-
-LIBS_STATIC        += -lrt #some system utils
-LIBS_STATIC        += -libverbs #some system utils
-LIBS_STATIC        += -lnuma #???some Linux libs do not have static versions(e.g., libnuma)
-LIBS_STATIC        += -lutil #some dependency from open-pal
-
 
 # The following is necessary under cygwin, if native compilers are used
 CYGPATH_W = echo
@@ -70,7 +63,7 @@ MEXFLAGS    = -v $(MEXFLAGCXX) -O CC="$(CXX)" CXX="$(CXX)" LD="$(CXX)"       \
 TARGET = mexsolve.$(MEXSUFFIX)
 OBJS   = mexsolve.o
 
-SRCDIR = /home/kardos/misc/matlabSchur 
+SRCDIR = $(CURDIR) 
 VPATH = $(SRCDIR)
 
 all: $(TARGET) main
