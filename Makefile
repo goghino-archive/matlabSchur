@@ -13,14 +13,23 @@
 # installation. This is the directory so that in its 'bin/'
 # subdirectory you see all the matlab executables (such as 'matlab',
 # 'mex', etc.)
-HOST=$(shell hostname)
-ifeq ($(HOST),archimedes)
+HOSTNAME = $(shell hostname)
+ifeq ($(findstring icsmaster,$(HOSTNAME)),icsmaster)
+    HOST=ics
+else ifeq ($(findstring icsnode,$(HOSTNAME)),icsnode)
+    HOST=ics
+else ifeq ($(findstring archimedes,$(HOSTNAME)),archimedes)
+    HOST=arch
+endif
+
+ifeq ($(HOST),arch)
     mpi_base = /home/kardos/openmpi
-    MATLAB_HOME = /opt/MATLAB/R2014b
-    pardiso_lib = /home/drosos/Libraries/linuxAMD64
-else ifeq ($(findstring icsmaster,$(HOST)),icsmaster)
-    mpi_base = $(OPENMPI_DIR)
     schur_base = /home/kardos/block_solve
+    pardiso_lib = /home/drosos/Libraries/linuxAMD64
+    MATLAB_HOME = /opt/MATLAB/R2014b
+else ifeq ($(HOST),ics)
+    mpi_base = $(OPENMPI_DIR)
+    schur_base = /home/kardos/PowerGrid
     pardiso_lib = /home/kardos/lib/pardiso
     MATLAB_HOME = /apps/matlab/R2016a
     LIB_SLURM = -lslurm
@@ -50,7 +59,7 @@ libdir      = ${mpi_library} #???
 CXX         = g++
 CXXFLAGS    = -g -fPIC -fopenmp -m64 -DPERF_METRIC -DMATLAB_MEXFILE # -DMWINDEXISINT
 CXXFLAGS   += -I$(mpi_base)/include -I$(schur_base)/include  
-LDFLAGS     = -L$(mpi_library) -L$(schur_library) -L$(pardiso_lib)
+LFLAGS     = -L$(mpi_library) -L$(schur_library) -L$(pardiso_lib)
 
 # The following is necessary under cygwin, if native compilers are used
 CYGPATH_W = echo
@@ -58,7 +67,7 @@ CYGPATH_W = echo
 MEXFLAGCXX = -cxx
 MEXFLAGS    = -v $(MEXFLAGCXX) -O CC="$(CXX)" CXX="$(CXX)" LD="$(CXX)"       \
               COPTIMFLAGS="$(CXXFLAGS)" CXXOPTIMFLAGS="$(CXXFLAGS)" \
-              LDOPTIMFLAGS="$(LDFLAGS)" 
+              LDOPTIMFLAGS="$(LFLAGS)" LDFLAGS="$(LFLAGS)" 
 
 TARGET = mexsolve.$(MEXSUFFIX)
 OBJS   = mexsolve.o
@@ -70,22 +79,21 @@ all: $(TARGET) worker
 
 $(TARGET): $(OBJS)
 	make mexopts
-	$(MEX) $(LDFLAGS) -g $(MEXFLAGS) -output $@ $^ \
+	$(MEX) $(LFLAGS) -g $(MEXFLAGS) -output $@ $^ \
 	-lmpi -lschur_gpp 
 
 worker: worker.cpp
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -std=c++11 -O3 -Wall -W \
-	-I$(matlab_eng_inc)  -L$(matlab_eng_path) \
+	$(CXX) $(CXXFLAGS) $(LFLAGS) -std=c++11 -O3 -Wall -W \
 	-o $@ $< \
 	-lmpi -lschur_gpp $(matlab_eng_lib) \
 	-lpardiso500-GNU481-X86-64 -lgfortran -lblas -llapack
 
 %.o: %.cpp
-	$(CXX) $(CXXFLAGS) -I$(matlab_eng_inc) \
-        -o $@ -c $^
+	$(CXX) $(CXXFLAGS) -I"$(MATLAB_HOME)/extern/include" \
+	-c $^ -o $@ 
 
 clean:
-	rm -f $(OBJS) *.lo $(TARGET) worker
+	rm -f $(OBJS) *.lo $(TARGET) mexsolve.mexa64 worker
 
 distclean: clean
 
