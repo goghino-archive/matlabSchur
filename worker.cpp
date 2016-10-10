@@ -4,100 +4,93 @@
 #include <stdlib.h>     /* exit, EXIT_FAILURE */
 #include <unistd.h>     /* gethostname */
 #include "SchurSolve.hpp"
-#include "engine.h"
 
 using namespace std;
 
-int main(int argv, char* argc[])
+int main(int argc, char* argv[])
 {
 
-    mpi_check(MPI_Init(&argv, &argc));
+    mpi_check(MPI_Init(&argc, &argv));
 
-    /* workaround to attach GDB */
-    int i = 0;
+    //Get cmd arguments
+    if(argc != 3)
+    {
+        cout << "[worker] Usage: " << argv[0] << " N NS"  << endl;
+        return 1;
+    }
+    int N  = int( strtol(argv[1], NULL, 0) );
+    int NS = int( strtol(argv[2], NULL, 0) );
+
+    // Show hostname
     char hostname[256];
     gethostname(hostname, sizeof(hostname));
     printf("Process with PID %d on %s ready to run\n", getpid(), hostname);
     fflush(stdout);
 
-    int mpi_rank, mpi_size;
-    MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
+    int rank, mpi_size, err;  
+    err = MPI_Comm_size(MPI_COMM_WORLD,&mpi_size);
+    mpi_check(err);
+    err = MPI_Comm_rank(MPI_COMM_WORLD,&rank);
+    mpi_check(err);
 
-    if (mpi_size < 2) {
-        printf("Run with minimum of two processes: mpirun -np 2 [...].\n");
-        return -3;
-    }
+    int mpi_parent_size; 
+    MPI_Comm parent_comm; 
 
-
-    int N = -1;
-    int NS = -1;
-    if(argv == 3)
+    //Get inter-communicator to parent process
+    err = MPI_Comm_get_parent(&parent_comm); 
+    mpi_check(err);
+    if (parent_comm == MPI_COMM_NULL)
     {
-        N = atoi(argc[1]);
-        NS = atoi(argc[2]);
+        cerr << "No parent!" << endl;
+        exit(1);
+    } 
+    err = MPI_Comm_remote_size(parent_comm, &mpi_parent_size); 
+    mpi_check(err);
+    if (mpi_parent_size != 1)
+    {
+        cerr << "Something's wrong with the parent" << endl;
+        exit(1);
     } 
 
-    // if rank == MASTER
-    if(mpi_rank == 0)
-    {
+    /*   
+     * The manager is represented as the process with rank 0 in (the remote 
+     * group of) parent_comm.  If the workers need to communicate among 
+     * themselves, they can use MPI_COMM_WORLD.  
+     * 
+     * We however merge the parent and child communicators 
+     * so that there is only one communicator containing
+     * parend and all the worker processes. We will put    
+     * parent in front of the workers, so he will have 
+     * rank 0.
+     */    
 
-        if (argv != 3) {
-            cout << "Usage: $mpirun -n NP ./solve_problem N NS \n";
-            exit(1);
-        }
+    MPI_Comm my_world_comm;
+    err = MPI_Intercomm_merge(parent_comm, 1, &my_world_comm);
+    mpi_check(err);
 
-        if (N <= 0 || NS <= 0) {
-            printf("Given problem size is invalid.\n");
-            exit(2);
-        }
-   
-        //call matlab
-        // char comm[500] = "matlab -nosplash -nodisplay -nojvm -nodesktop -r \"mexsolve\"";
-        // cout << "Calling the command: " << comm  << " at the MASTER node"<< endl;
-        // system(comm);
+    int rank_new, mpi_size_new;  
+    err = MPI_Comm_size(my_world_comm, &mpi_size_new);
+    mpi_check(err);
+    err = MPI_Comm_rank(my_world_comm, &rank_new);
+    mpi_check(err);
 
-        Engine* ep;
-        if (!(ep = engOpen("")))
-        {
-            fprintf(stderr, "\n *** Can't start MATLAB engine! *** \n");
-            return EXIT_FAILURE;
-        }
+    cout << "[worker" << rank << "]new rank is: " << rank_new
+        << " and size is " << mpi_size << "->" << mpi_size_new << endl;
 
-        engEvalString(ep, "mexsolve");
-    }
-    else
-    {
-          // child process waits for master to initiate the solution phase
-          int pardiso_mtype = -2; // symmetric H_i
-          int schur_factorization = 1; //augmented factorization
-          SchurSolve schurSolver = SchurSolve(pardiso_mtype, schur_factorization);
-          schurSolver.initSystem_OptimalControl(NULL, N, NS, NULL);
-          
-          while(1) {
-              //do test on termination, set by master process
-              int terminate = 0;
-              MPI_Bcast(&terminate, 1, MPI_INT, 0, MPI_COMM_WORLD);
-              if (terminate)
-                  break;
-              
-              //get flag new_matrix to child processes
-              bool new_matrix;
-              MPI_Bcast(&new_matrix, 1, MPI_C_BOOL, 0, MPI_COMM_WORLD);
 
-              //update system if necessary
-              if(new_matrix)
-              {
-                  schurSolver.updateSystem(NULL);
-              }
+    // child process waits for master to initiate the solution phase
+    int pardiso_mtype = -2; // symmetric H_i
+    int schur_factorization = 1; //augmented factorization
+    int nrhs = 1;
+    SchurSolve schurSolver = SchurSolve(pardiso_mtype, schur_factorization, my_world_comm);
+    schurSolver.initSystem_OptimalControl(NULL, N, NS, NULL);
+    schurSolver.solveSystem(NULL, NULL, nrhs);
 
-              int nrhs = 1;
-              schurSolver.solveSystem(NULL, NULL, nrhs);
-              }
-    }
-
+    MPI_Comm_disconnect(&parent_comm);
+    MPI_Comm_free(&my_world_comm);
+    MPI_Finalize(); 
 
     mpi_check(MPI_Finalize());
 
     return 0;
-    }
+}
