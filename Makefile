@@ -103,7 +103,7 @@ run:
 	LD_LIBRARY_PATH=$$LD_LIBRARY_PATH:$(pardiso_lib) \
 	LD_LIBRARY_PATH=$$LD_LIBRARY_PATH:$(schur_base)/lib \
 	$(PRELOAD) \
-	matlab -nojvm -nodisplay -nosplash -r "interface; exit"
+	mpirun -np 1 matlab -nojvm -nodisplay -nosplash -r "interface; exit"
 
 # make mexopts applies a set of fixes to mexopts.sh on Mac,
 # or mexopts.bat on Windows (if that file was generated
