@@ -162,7 +162,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 
     // further parameters for Schur solver
     bool use_direct_solvers   = false;
-    int number_of_rhs = 3;
+    int number_of_rhs = 1;
 
     CSRdouble* KKT = NULL;
     Matrix2D<double> RHS;
