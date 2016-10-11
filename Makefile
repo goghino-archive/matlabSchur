@@ -26,15 +26,18 @@ ifeq ($(HOST),arch)
     mpi_base = /home/kardos/openmpi
     schur_base = /home/kardos/block_solve
     pardiso_lib = /home/drosos/Libraries/linuxAMD64
+    LIB_BLAS = /apps/intel/mkl/lib/intel64
     MATLAB_HOME = /opt/MATLAB/R2014b
 else ifeq ($(HOST),ics)
     mpi_base = $(OPENMPI_DIR)
     schur_base = /home/kardos/PowerGrid
     pardiso_lib = /home/kardos/lib/pardiso
+    LIB_BLAS = /apps/intel/mkl/lib/intel64
     MATLAB_HOME = /apps/matlab/R2016a
+    
     LIB_SLURM = -lslurm
-    #PRELOAD = LD_PRELOAD="/usr/lib64/libslurm.so"
     PRELOAD = LD_PRELOAD="/usr/lib64/libslurm.so /apps/gcc/gcc-6.1.0/lib64/libstdc++.so.6"
+    #PRELOAD = LD_PRELOAD="/usr/lib64/libslurm.so"
     #also modify matlab's .rc script $vim ~/.matlab7rc.sh and
     #set up LDPATH_PREFIX='/apps/gcc/gcc-6.1.0/lib64/'
 endif
@@ -52,14 +55,14 @@ MEX = $(MATLAB_HOME)/bin/mex
 #############################################################################
 # Do not modify anything below unless you know what you're doing.
 mpi_library = $(mpi_base)/lib
-schur_library = $(schur_base)/lib
-
 libdir      = ${mpi_library} #??? 
+schur_library = $(schur_base)/lib
+BLAS        = -lmkl_gf_lp64 -lmkl_lapack95_lp64 -lmkl_sequential -lmkl_core -lpthread
 
 CXX         = g++
 CXXFLAGS    = -O2 -fPIC -fopenmp -m64 -DPERF_METRIC -DMATLAB_MEXFILE # -DMWINDEXISINT
 CXXFLAGS   += -I$(mpi_base)/include -I$(schur_base)/include  
-LFLAGS     = -L$(mpi_library) -L$(schur_library) -L$(pardiso_lib)
+LFLAGS     = -L$(mpi_library) -L$(schur_library) -L$(pardiso_lib) -L$(LIB_BLAS)
 
 # The following is necessary under cygwin, if native compilers are used
 CYGPATH_W = echo
@@ -81,13 +84,13 @@ $(TARGET): $(OBJS)
 	make mexopts
 	$(MEX) $(LFLAGS) -g $(MEXFLAGS) -output $@ $^ \
 	-lmpi -lschur_gpp \
-	-lpardiso500-GNU481-X86-64 -lgfortran -lblas -llapack
+	-lpardiso500-GNU481-X86-64 -lgfortran $(BLAS)
 
 worker: worker.cpp
 	$(CXX) $(CXXFLAGS) $(LFLAGS) -std=c++11 -O3 -Wall -W \
 	-o $@ $< \
 	-lmpi -lschur_gpp $(matlab_eng_lib) \
-	-lpardiso500-GNU481-X86-64 -lgfortran -lblas -llapack
+	-lpardiso500-GNU481-X86-64 -lgfortran $(BLAS)
 
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -I"$(MATLAB_HOME)/extern/include" \
@@ -101,6 +104,7 @@ distclean: clean
 run:
 	LD_LIBRARY_PATH=$$LD_LIBRARY_PATH:$(mpi_library) \
 	LD_LIBRARY_PATH=$$LD_LIBRARY_PATH:$(pardiso_lib) \
+	LD_LIBRARY_PATH=$$LD_LIBRARY_PATH:$(LIB_BLAS) \
 	LD_LIBRARY_PATH=$$LD_LIBRARY_PATH:$(schur_base)/lib \
 	$(PRELOAD) \
 	mpirun -np 1 matlab -nojvm -nodisplay -nosplash -r "interface; exit"
