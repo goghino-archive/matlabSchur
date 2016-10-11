@@ -1,5 +1,5 @@
 % Optimal control system
-A = '/home/kardos/block_solve/matrices/PardisoMat_10_2.csr';
+A = '/home/kardos/PowerGrid/matrices/PardisoMat_10_2.csr';
 % Grid size
 N = 10;
 % Number of scenarios

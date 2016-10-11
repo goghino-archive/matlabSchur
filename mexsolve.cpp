@@ -115,7 +115,11 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     char *N_ch = (char *)N_s.c_str();  //use char const* as type
     std::string NS_s = std::to_string(NS);
     char *NS_ch = (char *)NS_s.c_str();  //use char const* as type
-    char *worker_args[2] = {N_ch, NS_ch};
+    char *worker_args[3] = {N_ch, NS_ch, NULL};
+    //char *worker_args[3];
+    //worker_args[0] = "10";
+    //worker_args[1] = "2";
+    //worker_args[2] = NULL;
     MPI_Info host_info = MPI_INFO_NULL;
     // MPI_Info_create(&host_info); 
     // MPI_Info_set(host_info, "host", "icsnode13,icsnode15");
