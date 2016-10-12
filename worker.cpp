@@ -90,7 +90,5 @@ int main(int argc, char* argv[])
     MPI_Comm_free(&my_world_comm);
     MPI_Finalize(); 
 
-    mpi_check(MPI_Finalize());
-
     return 0;
 }

@@ -243,5 +243,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     X_exact.clear();
     X.clear();
 
+    MPI_Comm_disconnect(&everyone_comm);
+    MPI_Comm_free(&my_world_comm);
     MPI_Finalize();
 }
