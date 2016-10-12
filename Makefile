@@ -34,6 +34,7 @@ else ifeq ($(HOST),ics)
     pardiso_lib = /home/kardos/lib/pardiso
     LIB_BLAS = /apps/intel/mkl/lib/intel64
     MATLAB_HOME = /apps/matlab/R2016a
+    MKLROOT = /apps/intel/mkl
     
     LIB_SLURM = -lslurm
     PRELOAD = LD_PRELOAD="/usr/lib64/libslurm.so /apps/gcc/gcc-6.1.0/lib64/libstdc++.so.6"
@@ -60,7 +61,8 @@ schur_library = $(schur_base)/lib
 BLAS        = -lmkl_gf_lp64 -lmkl_lapack95_lp64 -lmkl_sequential -lmkl_core -lpthread
 
 CXX         = g++
-CXXFLAGS    = -O2 -fPIC -fopenmp -m64 -DPERF_METRIC -DMATLAB_MEXFILE # -DMWINDEXISINT
+CXXFLAGS    = -g
+CXXFLAGS   += -fPIC -fopenmp -m64 -DPERF_METRIC -DMATLAB_MEXFILE
 CXXFLAGS   += -I$(mpi_base)/include -I$(schur_base)/include  
 LFLAGS     = -L$(mpi_library) -L$(schur_library) -L$(pardiso_lib) -L$(LIB_BLAS)
 
@@ -107,6 +109,9 @@ run:
 	LD_LIBRARY_PATH=$$LD_LIBRARY_PATH:$(LIB_BLAS) \
 	LD_LIBRARY_PATH=$$LD_LIBRARY_PATH:$(schur_base)/lib \
 	$(PRELOAD) \
+	BLAS_VERSION=$(MKLROOT)/lib/intel64/libmkl_rt.so \
+	LAPACK_VERSION=$(MKLROOT)/lib/intel64/libmkl_rt.so \
+	MKL_INTERFACE_LAYER=LP64 \
 	mpirun -np 1 matlab -nojvm -nodisplay -nosplash -r "interface; exit"
 
 # make mexopts applies a set of fixes to mexopts.sh on Mac,
