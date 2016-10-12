@@ -206,8 +206,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     schurSolver.timingReport();
 
     //associate outputs
-    mxArray *c_out_m = plhs[0] = mxCreateDoubleMatrix(1, KKT->nrows, mxREAL);
-    //TODO
+    mxArray *solution_mx = plhs[0] = mxCreateDoubleMatrix(1, KKT->nrows, mxREAL);
+    double *solution = mxGetPr(solution_mx);
+    memcpy(solution, X.data, KKT->nrows * sizeof(double));
 
     //generate new KKT data, the structure is the same
     // double *new_data;
