@@ -32,9 +32,9 @@ else ifeq ($(HOST),ics)
     mpi_base = $(OPENMPI_DIR)
     schur_base = /home/kardos/PowerGrid
     pardiso_lib = /home/kardos/lib/pardiso
-    LIB_BLAS = /apps/intel/mkl/lib/intel64
+    MKLROOT = /apps/intel/17.0.0/mkl
+    LIB_BLAS = $(MKLROOT)/lib/intel64
     MATLAB_HOME = /apps/matlab/R2016a
-    MKLROOT = /apps/intel/mkl
     
     LIB_SLURM = -lslurm
     PRELOAD = LD_PRELOAD="/usr/lib64/libslurm.so /apps/gcc/gcc-6.1.0/lib64/libstdc++.so.6"
@@ -85,13 +85,13 @@ all: $(TARGET) worker
 $(TARGET): $(OBJS)
 	make mexopts
 	$(MEX) $(LFLAGS) -g $(MEXFLAGS) -output $@ $^ \
-	-lmpi -lschur_gpp \
+	-lmpi -lschur \
 	-lpardiso500-GNU481-X86-64 -lgfortran $(BLAS)
 
 worker: worker.cpp
 	$(CXX) $(CXXFLAGS) $(LFLAGS) -std=c++11 -O3 -Wall -W \
 	-o $@ $< \
-	-lmpi -lschur_gpp $(matlab_eng_lib) \
+	-lmpi -lschur $(matlab_eng_lib) \
 	-lpardiso500-GNU481-X86-64 -lgfortran $(BLAS)
 
 %.o: %.cpp

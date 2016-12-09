@@ -169,14 +169,13 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     Matrix2D<double> X;
     Matrix2D<double> X_exact;
 
-    int* index_a = NULL;
 
     // load KKT and generate RHS and reference exact solution
     // load IPOPT KKT matrix from file        
     KKT = new CSRdouble();
     bool hasCols = false;
     KKT->loadFromFile(fA, hasCols);
-    KKT->fillSymmetricNew(index_a);
+    KKT->matrixType = SYMMETRIC;
 
     int nrows =  KKT->nrows;
 
@@ -197,7 +196,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     int pardiso_mtype = -2; // symmetric H_i
     int schur_factorization = 1; // augmented factorization
     SchurSolve schurSolver = SchurSolve(pardiso_mtype, schur_factorization, my_world_comm);
-    schurSolver.initSystem_OptimalControl(KKT, N, NS, index_a);
+    schurSolver.initSystem_OptimalControl(KKT, N, NS);
 
     // Only master contains RHS with actual data at this point
     // it is communicated to children inside the solve

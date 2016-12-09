@@ -74,7 +74,7 @@ int main(int argc, char* argv[])
     err = MPI_Comm_rank(my_world_comm, &rank_new);
     mpi_check(err);
 
-    cout << "[worker" << rank << "]new rank is: " << rank_new
+    cout << "[worker" << rank << "]new rank is: " << rank << "->"<< rank_new
         << " and size is " << mpi_size << "->" << mpi_size_new << endl;
 
 
@@ -83,7 +83,7 @@ int main(int argc, char* argv[])
     int schur_factorization = 1; //augmented factorization
     int nrhs = 1;
     SchurSolve schurSolver = SchurSolve(pardiso_mtype, schur_factorization, my_world_comm);
-    schurSolver.initSystem_OptimalControl(NULL, N, NS, NULL);
+    schurSolver.initSystem_OptimalControl(NULL, N, NS);
     schurSolver.solveSystem(NULL, NULL, nrhs);
 
     MPI_Comm_disconnect(&parent_comm);
